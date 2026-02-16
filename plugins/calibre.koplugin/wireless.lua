@@ -108,8 +108,8 @@ end
 -- sanitize server-provided strings to prevent display issues
 local function sanitizeServerString(str)
     if not str then return str end
-    -- Convert to string, replace control characters with space, then collapse multiple spaces
-    return tostring(str):gsub("%c+", " "):gsub("%s+", " ")
+    -- Convert to string, replace control characters with space, collapse multiple spaces, and trim
+    return tostring(str):gsub("%c+", " "):gsub("%s+", " "):match("^%s*(.-)%s*$")
 end
 
 local CalibreWireless = WidgetContainer:extend{
@@ -797,7 +797,11 @@ function CalibreWireless:calibreBusy(arg)
     -- Calibre is busy with another device
     if arg.otherDevice then
         local device = sanitizeServerString(arg.otherDevice)
-        self.calibre_busy_msg = T(_("Calibre is busy (another device connected: %1)"), device)
+        if device and device ~= "" then
+            self.calibre_busy_msg = T(_("Calibre is busy (another device connected: %1)"), device)
+        else
+            self.calibre_busy_msg = _("Calibre is busy")
+        end
     else
         self.calibre_busy_msg = _("Calibre is busy")
     end
@@ -809,7 +813,11 @@ function CalibreWireless:calibreError(arg)
     -- Calibre sent an error message
     if arg.message then
         local message = sanitizeServerString(arg.message)
-        self.calibre_error_msg = message
+        if message and message ~= "" then
+            self.calibre_error_msg = message
+        else
+            self.calibre_error_msg = _("Calibre reported an error")
+        end
     else
         self.calibre_error_msg = _("Calibre reported an error")
     end
