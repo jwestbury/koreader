@@ -292,6 +292,10 @@ function CalibreWireless:connect()
         self.re = re
         self.invalid_password = false
         self.disconnected_by_server = false
+        self.calibre_busy = false
+        self.calibre_busy_msg = nil
+        self.calibre_error = false
+        self.calibre_error_msg = nil
         if pcall(self.initCalibreMQ, self, host, port) then
             CalibreMetadata:init(inbox_dir)
             -- And wait for initial requests: GET_INITIALIZATION_INFO, followed by
@@ -312,6 +316,10 @@ function CalibreWireless:connect()
         end
         if self.invalid_password then
             ok, err = false, "invalid password"
+        elseif self.calibre_busy then
+            ok, err = false, self.calibre_busy_msg
+        elseif self.calibre_error then
+            ok, err = false, self.calibre_error_msg
         elseif not ok then
             -- Manually open a TCP connection to get a more informative error.
             ok, err = check_host_port(host, port)
@@ -325,8 +333,14 @@ function CalibreWireless:connect()
 
     if not ok then
         logger.warn("calibre: connection failed,", err)
-        -- @translators %1: address (host:port), %2: error
-        Trapper:info(T(_("Cannot connect to calibre server at %1 (%2)"), server_info, _(err)))
+        -- For calibre_busy and calibre_error, err is already translated/formatted
+        if self.calibre_busy or self.calibre_error then
+            -- @translators %1: address (host:port), %2: error
+            Trapper:info(T(_("Cannot connect to calibre server at %1 (%2)"), server_info, err))
+        else
+            -- @translators %1: address (host:port), %2: error
+            Trapper:info(T(_("Cannot connect to calibre server at %1 (%2)"), server_info, _(err)))
+        end
         self:disconnect(not self.invalid_password)
         return
     end
@@ -373,6 +387,10 @@ function CalibreWireless:disconnect(no_parting_noop)
     self.calibre_socket = nil
     self.invalid_password = false
     self.disconnected_by_server = false
+    self.calibre_busy = false
+    self.calibre_busy_msg = nil
+    self.calibre_error = false
+    self.calibre_error_msg = nil
 
     CalibreMetadata:clean()
 
@@ -438,6 +456,10 @@ function CalibreWireless:onReceiveJSON(data)
                 self:sendToCalibre(arg)
             elseif opcode == OPCODES.DISPLAY_MESSAGE then
                 self:serverFeedback(arg)
+            elseif opcode == OPCODES.CALIBRE_BUSY then
+                self:calibreBusy(arg)
+            elseif opcode == OPCODES.ERROR then
+                self:calibreError(arg)
             elseif opcode == OPCODES.NOOP then
                 self:noop(arg)
             end
@@ -761,6 +783,28 @@ function CalibreWireless:serverFeedback(arg)
     if arg.messageKind == 1 then
         self.invalid_password = true
     end
+end
+
+function CalibreWireless:calibreBusy(arg)
+    logger.dbg("CALIBRE_BUSY", arg)
+    -- Calibre is busy with another device
+    if arg.otherDevice then
+        self.calibre_busy_msg = T(_("Calibre is busy (another device connected: %1)"), arg.otherDevice)
+    else
+        self.calibre_busy_msg = _("Calibre is busy")
+    end
+    self.calibre_busy = true
+end
+
+function CalibreWireless:calibreError(arg)
+    logger.dbg("ERROR", arg)
+    -- Calibre sent an error message
+    if arg.message then
+        self.calibre_error_msg = arg.message
+    else
+        self.calibre_error_msg = _("Calibre reported an error")
+    end
+    self.calibre_error = true
 end
 
 function CalibreWireless:sendToCalibre(arg)
