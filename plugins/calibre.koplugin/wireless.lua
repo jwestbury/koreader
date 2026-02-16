@@ -789,7 +789,9 @@ function CalibreWireless:calibreBusy(arg)
     logger.dbg("CALIBRE_BUSY", arg)
     -- Calibre is busy with another device
     if arg.otherDevice then
-        self.calibre_busy_msg = T(_("Calibre is busy (another device connected: %1)"), arg.otherDevice)
+        -- Sanitize the device name to prevent display issues
+        local device = tostring(arg.otherDevice):gsub("[%c\r\n\t]", " ")
+        self.calibre_busy_msg = T(_("Calibre is busy (another device connected: %1)"), device)
     else
         self.calibre_busy_msg = _("Calibre is busy")
     end
@@ -800,7 +802,9 @@ function CalibreWireless:calibreError(arg)
     logger.dbg("ERROR", arg)
     -- Calibre sent an error message
     if arg.message then
-        self.calibre_error_msg = arg.message
+        -- Sanitize the error message to prevent display issues
+        local message = tostring(arg.message):gsub("[%c\r\n\t]", " ")
+        self.calibre_error_msg = message
     else
         self.calibre_error_msg = _("Calibre reported an error")
     end
