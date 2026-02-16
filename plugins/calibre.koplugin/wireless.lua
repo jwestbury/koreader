@@ -108,12 +108,17 @@ end
 -- sanitize server-provided strings to prevent display issues
 -- accepts any type and converts to string (handles JSON values that may be non-strings)
 -- returns nil if the string is empty or contains only control characters/whitespace
-local function sanitizeServerString(str)
+local function sanitizeServerString(str, max_length)
     if not str then return nil end
     -- Convert to string (handles non-string JSON values), replace control characters
     -- with space, collapse multiple spaces, and trim
     local sanitized = tostring(str):gsub("%c+", " "):gsub("%s+", " "):match("^%s*(.-)%s*$") or ""
-    return sanitized ~= "" and sanitized or nil
+    if sanitized == "" then return nil end
+    -- Truncate if too long
+    if max_length and #sanitized > max_length then
+        sanitized = sanitized:sub(1, max_length - 3) .. "..."
+    end
+    return sanitized
 end
 
 local CalibreWireless = WidgetContainer:extend{
@@ -799,7 +804,7 @@ end
 function CalibreWireless:calibreBusy(arg)
     logger.dbg("CALIBRE_BUSY", arg)
     -- Calibre is busy with another device
-    local device = arg.otherDevice and sanitizeServerString(arg.otherDevice)
+    local device = arg.otherDevice and sanitizeServerString(arg.otherDevice, 50)
     if device then
         self.calibre_busy_msg = T(_("Calibre is busy (another device connected: %1)"), device)
     else
@@ -811,7 +816,7 @@ end
 function CalibreWireless:calibreError(arg)
     logger.dbg("ERROR", arg)
     -- Calibre sent an error message
-    local message = arg.message and sanitizeServerString(arg.message)
+    local message = arg.message and sanitizeServerString(arg.message, 200)
     if message then
         self.calibre_error_msg = message
     else
