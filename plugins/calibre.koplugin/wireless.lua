@@ -105,6 +105,13 @@ local function updateDir(dir)
     end
 end
 
+-- sanitize server-provided strings to prevent display issues
+local function sanitizeServerString(str)
+    if not str then return str end
+    -- Convert to string, replace control characters with space, then collapse multiple spaces
+    return tostring(str):gsub("%c+", " "):gsub("%s+", " ")
+end
+
 local CalibreWireless = WidgetContainer:extend{
     id = "KOReader",
     model = require("device").model,
@@ -789,8 +796,7 @@ function CalibreWireless:calibreBusy(arg)
     logger.dbg("CALIBRE_BUSY", arg)
     -- Calibre is busy with another device
     if arg.otherDevice then
-        -- Sanitize the device name to prevent display issues
-        local device = tostring(arg.otherDevice):gsub("%c+", " ")
+        local device = sanitizeServerString(arg.otherDevice)
         self.calibre_busy_msg = T(_("Calibre is busy (another device connected: %1)"), device)
     else
         self.calibre_busy_msg = _("Calibre is busy")
@@ -802,8 +808,7 @@ function CalibreWireless:calibreError(arg)
     logger.dbg("ERROR", arg)
     -- Calibre sent an error message
     if arg.message then
-        -- Sanitize the error message to prevent display issues
-        local message = tostring(arg.message):gsub("%c+", " ")
+        local message = sanitizeServerString(arg.message)
         self.calibre_error_msg = message
     else
         self.calibre_error_msg = _("Calibre reported an error")
