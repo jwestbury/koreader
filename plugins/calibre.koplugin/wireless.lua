@@ -106,10 +106,12 @@ local function updateDir(dir)
 end
 
 -- sanitize server-provided strings to prevent display issues
+-- returns nil if the string is empty or contains only control characters/whitespace
 local function sanitizeServerString(str)
-    if not str then return str end
+    if not str then return nil end
     -- Convert to string, replace control characters with space, collapse multiple spaces, and trim
-    return tostring(str):gsub("%c+", " "):gsub("%s+", " "):match("^%s*(.-)%s*$")
+    local sanitized = tostring(str):gsub("%c+", " "):gsub("%s+", " "):match("^%s*(.-)%s*$") or ""
+    return sanitized ~= "" and sanitized or nil
 end
 
 local CalibreWireless = WidgetContainer:extend{
@@ -795,13 +797,9 @@ end
 function CalibreWireless:calibreBusy(arg)
     logger.dbg("CALIBRE_BUSY", arg)
     -- Calibre is busy with another device
-    if arg.otherDevice then
-        local device = sanitizeServerString(arg.otherDevice)
-        if device and device ~= "" then
-            self.calibre_busy_msg = T(_("Calibre is busy (another device connected: %1)"), device)
-        else
-            self.calibre_busy_msg = _("Calibre is busy")
-        end
+    local device = arg.otherDevice and sanitizeServerString(arg.otherDevice)
+    if device then
+        self.calibre_busy_msg = T(_("Calibre is busy (another device connected: %1)"), device)
     else
         self.calibre_busy_msg = _("Calibre is busy")
     end
@@ -811,13 +809,9 @@ end
 function CalibreWireless:calibreError(arg)
     logger.dbg("ERROR", arg)
     -- Calibre sent an error message
-    if arg.message then
-        local message = sanitizeServerString(arg.message)
-        if message and message ~= "" then
-            self.calibre_error_msg = message
-        else
-            self.calibre_error_msg = _("Calibre reported an error")
-        end
+    local message = arg.message and sanitizeServerString(arg.message)
+    if message then
+        self.calibre_error_msg = message
     else
         self.calibre_error_msg = _("Calibre reported an error")
     end
