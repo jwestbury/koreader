@@ -106,10 +106,12 @@ local function updateDir(dir)
 end
 
 -- sanitize server-provided strings to prevent display issues
+-- accepts any type and converts to string (handles JSON values that may be non-strings)
 -- returns nil if the string is empty or contains only control characters/whitespace
 local function sanitizeServerString(str)
     if not str then return nil end
-    -- Convert to string, replace control characters with space, collapse multiple spaces, and trim
+    -- Convert to string (handles non-string JSON values), replace control characters
+    -- with space, collapse multiple spaces, and trim
     local sanitized = tostring(str):gsub("%c+", " "):gsub("%s+", " "):match("^%s*(.-)%s*$") or ""
     return sanitized ~= "" and sanitized or nil
 end
